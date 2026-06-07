@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>İnteraktif Dijital Sanat - Yoğun Duman</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://unpkg.com/ml5@1/dist/ml5.min.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden; 
+      background-color: #000;
+      color: white;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block; 
+    }
+  </style>
+</head>
+<body>
+  <script>
+    let video;
+    let bodySegmentation;
+    let segmentation;
+
+    function preload() {
+      let options = { maskType: "background" };
+      bodySegmentation = ml5.bodySegmentation("SelfieSegmentation", options);
+    }
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      pixelDensity(1); 
+
+      video = createCapture(VIDEO);
+      video.size(640, 480);
+      video.hide(); 
+
+      bodySegmentation.detectStart(video, gotResults);
+    }
+
+    function gotResults(results) {
+      segmentation = results;
+    }
+
+    function draw() {
+      if (segmentation) {
+        // 1. UZUN DUMAN İZİ: Sayı 35'ten 10'a düştü. (İzler havada çok daha uzun kalacak)
+        blendMode(BLEND);
+        fill(0, 10); 
+        noStroke();
+        rect(0, 0, width, height);
+
+        video.mask(segmentation.mask);
+
+        push();
+        translate(width, 0);
+        scale(-1, 1);
+
+        blendMode(SCREEN);
+
+        let scaleFactor = max(width / video.width, height / video.height);
+        let drawW = video.width * scaleFactor;
+        let drawH = video.height * scaleFactor;
+
+        // 3. ABARTILMIŞ DUMAN KATMANLARI (15 Katman!)
+        for (let i = 0; i < 15; i++) {
+          
+          // Çok daha agresif bir dağılma (Sağa sola savrulma)
+          let noiseX = (noise(frameCount * 0.015, i * 20) - 0.5) * (80 * i);
+          
+          // Güçlü bir yukarı doğru çekim (Ateş/Duman yükselmesi)
+          let noiseY = -(i * 20) - (noise(frameCount * 0.02, i * 15) * (40 * i));
+
+          // Katmanlar arası girdap/kıvrılma efekti (Rotation)
+          let rot = (noise(frameCount * 0.01, i * 5) - 0.5) * (0.05 * i);
+
+          // Dışarı doğru devasa büyüme
+          let s = 1 + (i * 0.08);
+
+          // Şeffaflık: İçteki katmanlar belirgin, dıştakiler hayalet gibi
+          let alphaValue = map(i, 0, 14, 70, 2);
+
+          // RENK EVRİMİ: Merkez parlak, dışarısı koyu mistik mavi/mor
+          let r = map(i, 0, 14, 200, 50);
+          let g = map(i, 0, 14, 220, 80);
+          let b = map(i, 0, 14, 255, 255);
+
+          tint(r, g, b, alphaValue);
+
+          push();
+          // Tam ekranın ortasında hesaplamaları yap
+          translate(width / 2 + noiseX, height / 2 + noiseY);
+          // Girdap dönüşünü uygula
+          rotate(rot);
+          // Büyümeyi uygula
+          scale(s);
+          imageMode(CENTER);
+          image(video, 0, 0, drawW, drawH);
+          pop();
+        }
+        pop();
+      } else {
+        background(0);
+        fill(255);
+        textAlign(CENTER, CENTER);
+        textSize(18);
+        text("Yoğun büyü hazırlanıyor...\nLütfen bekleyin.", width / 2, height / 2);
+      }
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+  </script>
+</body>
+</html>
